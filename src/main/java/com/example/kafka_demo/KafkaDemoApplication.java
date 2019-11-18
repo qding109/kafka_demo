@@ -1,5 +1,6 @@
 package com.example.kafka_demo;
 
+import com.example.kafka_demo.config.KafkaSendResultHandler;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
@@ -35,10 +36,14 @@ public class KafkaDemoApplication {
     }
 
     @Resource
+    private  KafkaSendResultHandler kafkaSendResultHandler;
+
+    @Autowired
     private KafkaTemplate<Object, Object> template;
 
     @GetMapping("/send/{input}")
     public void sendFoo(@PathVariable String input) {
+        //template.setProducerListener(new KafkaSendResultHandler());
         this.template.send("topic_input", input);
     }
     @KafkaListener(id = "webGroup", topics = "topic_input")
@@ -61,6 +66,7 @@ public class KafkaDemoApplication {
     public String listen1(String input) {
         logger.info("input value: {}", input);
         //进行了消息加工，转发过去加工后的消息
+
         return input + "hello!";
     }
 
@@ -110,6 +116,21 @@ public class KafkaDemoApplication {
     public String listen3(String input) {
         logger.info("input value: {}", input);
         return "successful";
+    }
+
+    /**
+     * 事务
+     * 在事务中发送两条消息，即使第一条发送成功也会因为第二条发送失败而回滚
+     * 注意：要在配置中开启事务
+     */
+    @GetMapping("/send2/{input}")
+    @Transactional(rollbackFor = RuntimeException.class)
+    public void sendFoo3(@PathVariable String input) {
+        template.send("topic_input", "kl");
+        if ("error".equals(input)) {
+            throw new RuntimeException("failed");
+        }
+        template.send("topic_input", "ckl");
     }
 
 }
